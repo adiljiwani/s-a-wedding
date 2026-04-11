@@ -294,13 +294,22 @@
      ZOLA CTA — minimal, just a button
   ════════════════════════════════════════ */
 
+  /* Empty scroll spacer — just provides the final snap point */
   .zola-section {
-    /* snap lands here after the last card — button is centred in the viewport */
     height: 100vh;
+    scroll-snap-align: start;
+  }
+
+  /* Fixed overlay — cross-fades in as the last card exits */
+  #zolaScreen {
+    position: fixed;
+    inset: 0;
+    z-index: 10;
     display: flex;
     align-items: center;
     justify-content: center;
-    scroll-snap-align: start;
+    opacity: 0;
+    pointer-events: none;
   }
 
   .zola-btn {
@@ -432,13 +441,17 @@
 
 
 <!-- ════════════════════════════════════════
-     ZOLA CTA
+     ZOLA CTA — fixed overlay, cross-fades in
+     as the last card exits
 ════════════════════════════════════════ -->
-<div class="zola-section">
+<div id="zolaScreen">
   <a class="zola-btn" href="https://www.zola.com/wedding/adilandsania" target="_blank">
     RSVP on Zola &nbsp;↗
   </a>
 </div>
+
+<!-- empty spacer just to provide the final CSS snap point -->
+<div class="zola-section"></div>
 
 
 <script>
@@ -527,6 +540,7 @@ const N = 4;
 const cardSections = Array.from({length: N}, (_, i) => document.getElementById('sec'+i));
 const entrances    = Array.from({length: N}, (_, i) => document.getElementById('ent'+i));
 const flippers     = Array.from({length: N}, (_, i) => document.getElementById('flip'+i));
+const zolaScreen   = document.getElementById('zolaScreen');
 
 
 // ─── Hide irrelevant cards immediately (before first paint) ──
@@ -611,6 +625,13 @@ function update() {
     const flipP = eio(mapRange(cp, 0.30, 0.70, 0, 1));
     flippers[i].style.transform  = `rotateY(${flipP * 180}deg)`;
   }
+
+  // Zola CTA cross-fades in as the last card exits
+  const lastI  = visibleIdx[visibleIdx.length - 1];
+  const lastCp = sectionProgress(cardSections[lastI]);
+  const zolaOp = eout(mapRange(lastCp, 0.80, 1.0, 0, 1));
+  zolaScreen.style.opacity       = String(zolaOp);
+  zolaScreen.style.pointerEvents = zolaOp > 0.5 ? 'auto' : 'none';
 }
 
 let ticking = false;
