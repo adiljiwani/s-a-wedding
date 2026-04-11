@@ -7,6 +7,10 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
+  html {
+    scroll-snap-type: y mandatory;
+  }
+
   html, body {
     background: #FAF5EF;
   }
@@ -169,6 +173,24 @@
 
   .pin-section {
     /* purely a scroll-distance spacer */
+    position: relative; /* needed so .snap-gate can be absolutely placed */
+  }
+
+  /* Placed at 75 % of each 130vh section (= 97.5vh from section top).
+     scroll-snap-stop: always means a fast iOS swipe MUST stop here. */
+  .snap-gate {
+    position: absolute;
+    top: 97.5vh;
+    height: 1px;
+    width: 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    pointer-events: none;
+  }
+
+  /* Anchor at y = 0 so mandatory snap never auto-scrolls on open */
+  .snap-top {
+    scroll-snap-align: start;
   }
 
   /* Fixed frame that holds every card */
@@ -273,13 +295,12 @@
   ════════════════════════════════════════ */
 
   .zola-section {
-    /* padding-top pushes the button below the viewport while the last
-       card is still fading — it only appears once the card is fully gone */
-    padding-top: 100vh;
-    min-height: 200vh;
+    /* snap lands here after the last card — button is centred in the viewport */
+    height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
+    scroll-snap-align: start;
   }
 
   .zola-btn {
@@ -395,14 +416,19 @@
 </div>
 
 
+<!-- snap anchor at y=0 — keeps mandatory snap from auto-scrolling on open -->
+<div class="snap-top"></div>
+
 <!-- ════════════════════════════════════════
      SCROLL SPACERS — one per visible card.
      Heights drive sectionProgress() in JS.
+     Each contains a .snap-gate at 75 % depth
+     so iOS can't fast-swipe past the back face.
 ════════════════════════════════════════ -->
-<div class="pin-section" id="sec0" style="height: 130vh;"></div>
-<div class="pin-section" id="sec1" style="height: 130vh;"></div>
-<div class="pin-section" id="sec2" style="height: 130vh;"></div>
-<div class="pin-section" id="sec3" style="height: 130vh;"></div>
+<div class="pin-section" id="sec0" style="height: 130vh;"><div class="snap-gate"></div></div>
+<div class="pin-section" id="sec1" style="height: 130vh;"><div class="snap-gate"></div></div>
+<div class="pin-section" id="sec2" style="height: 130vh;"><div class="snap-gate"></div></div>
+<div class="pin-section" id="sec3" style="height: 130vh;"><div class="snap-gate"></div></div>
 
 
 <!-- ════════════════════════════════════════
@@ -593,6 +619,14 @@ window.addEventListener('scroll', () => {
     ticking = true;
   }
 }, { passive: true });
+
+
+// ─── Checkpoint gate ──────────────────────────────────────────
+// Handled entirely by CSS scroll-snap: each .pin-section contains
+// a .snap-gate div at 97.5vh (75 % of 130vh) with
+//   scroll-snap-align: start; scroll-snap-stop: always
+// The html element has scroll-snap-type: y mandatory.
+// This is the only approach that reliably gates fast iOS swipes.
 
 update();
 </script>
