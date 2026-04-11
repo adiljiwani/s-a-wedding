@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Adil &amp; Sania</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    background: #FAF5EF;
+  }
+
+
+  /* ════════════════════════════════════════
+     ENVELOPE OVERLAY — fixed full-screen,
+     sits on top of everything until dismissed
+  ════════════════════════════════════════ */
+
+  #envOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: #FAF5EF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* cross-fade out is applied via JS */
+  }
+
+  .envelope-stage {
+    position: relative;
+    width: min(460px, 86vw);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* ── Envelope ── */
+  .envelope-wrapper {
+    position: relative;
+    width: 100%;
+    cursor: pointer;
+  }
+
+  .envelope-wrapper.opened {
+    cursor: default;
+  }
+
+  .envelope-body-clip {
+    position: relative;
+    overflow: hidden;
+    border-radius: 2px;
+    box-shadow: 0 6px 28px rgba(0,0,0,0.13);
+  }
+
+  .envelope-inside {
+    display: block;
+    width: 100%; height: auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  .envelope-outside {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: auto;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  .flap-container {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    perspective: 1000px;
+    z-index: 10;
+  }
+
+  .flap {
+    width: 100%;
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+    transform-origin: top center;
+    /* transition added when needed */
+  }
+
+  .flap-front,
+  .flap-back {
+    display: block;
+    width: 100%; height: auto;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  .flap-front { position: relative; }
+
+  .flap-back {
+    position: absolute;
+    top: 0; left: 0;
+    transform: rotateX(180deg);
+  }
+
+  /* ── Names + hints ── */
+  .names-label {
+    margin-top: 14px;
+    font-family: 'Georgia', serif;
+    font-size: clamp(14px, 3.8vw, 19px);
+    color: #7A624E;
+    letter-spacing: 0.22em;
+    font-weight: normal;
+    text-align: center;
+  }
+
+  .tap-hint {
+    margin-top: 14px;
+    font-family: 'Georgia', serif;
+    font-size: 11px;
+    color: #B09880;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    text-align: center;
+    transition: opacity 0.35s ease;
+  }
+
+
+  /* ════════════════════════════════════════
+     SCROLL HINT — fixed, shown after cross-fade
+  ════════════════════════════════════════ */
+
+  #scrollHint {
+    position: fixed;
+    bottom: 28px;
+    left: 0; right: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Georgia', serif;
+    font-size: 10px;
+    color: #B09880;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.6s ease;
+  }
+
+  #scrollHint .line {
+    width: 1px;
+    height: 22px;
+    background: #B09880;
+    transform-origin: top center;
+    animation: drip 1.8s ease-in-out infinite;
+  }
+
+  @keyframes drip {
+    0%   { transform: scaleY(0);  opacity: 0; }
+    20%  { opacity: 1; }
+    100% { transform: scaleY(1);  opacity: 0.2; }
+  }
+
+
+  /* ════════════════════════════════════════
+     CARD FRAME — fixed overlay, always centred.
+     Pin-sections are empty scroll spacers only.
+  ════════════════════════════════════════ */
+
+  .pin-section {
+    /* purely a scroll-distance spacer */
+  }
+
+  /* Fixed frame that holds every card */
+  #card-frame {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  /* Each card is stacked in the centre */
+  .card-entrance {
+    position: absolute;
+    width: min(420px, 83vw);
+    will-change: transform, opacity;
+    pointer-events: auto;
+  }
+
+  /* Perspective context */
+  .card-stage {
+    width: 100%;
+    perspective: 1200px;
+  }
+
+  /* 3D flip */
+  .card-flipper {
+    width: 100%;
+    transform-style: preserve-3d;
+    -webkit-transform-style: preserve-3d;
+    will-change: transform;
+  }
+
+  .card-face {
+    display: block;
+    width: 100%; height: auto;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    border-radius: 5px;
+    box-shadow: 0 12px 44px rgba(0,0,0,0.22);
+  }
+
+  .card-face.back {
+    position: absolute;
+    top: 0; left: 0;
+    transform: rotateY(180deg);
+  }
+
+
+  /* ════════════════════════════════════════
+     WELCOME SCREEN — fades in after envelope opens,
+     fades out as user begins to scroll
+  ════════════════════════════════════════ */
+
+  #welcomeScreen {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0 40px;
+    opacity: 0;
+    pointer-events: none;
+    /* transition added via JS */
+  }
+
+  .welcome-eyebrow {
+    font-family: 'Georgia', serif;
+    font-size: clamp(11px, 3vw, 13px);
+    color: #B09880;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .welcome-title {
+    font-family: 'Georgia', serif;
+    font-size: clamp(28px, 8vw, 48px);
+    color: #3A2718;
+    letter-spacing: 0.1em;
+    font-weight: normal;
+    line-height: 1.2;
+    margin-bottom: 20px;
+  }
+
+  .welcome-tagline {
+    font-family: 'Georgia', serif;
+    font-size: clamp(13px, 3.6vw, 16px);
+    color: #8C7260;
+    letter-spacing: 0.06em;
+    font-style: italic;
+  }
+
+
+  /* ════════════════════════════════════════
+     ZOLA CTA — minimal, just a button
+  ════════════════════════════════════════ */
+
+  .zola-section {
+    min-height: 60vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 32px;
+  }
+
+  .zola-btn {
+    display: inline-block;
+    padding: 17px 52px;
+    background: #3A2718;
+    color: #FAF5EF;
+    text-decoration: none;
+    font-family: 'Georgia', serif;
+    font-size: clamp(13px, 3.8vw, 15px);
+    letter-spacing: 0.14em;
+    border-radius: 2px;
+    transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  }
+
+  .zola-btn:hover,
+  .zola-btn:active {
+    background: #251a10;
+    box-shadow: 0 6px 22px rgba(58,39,24,0.28);
+    transform: translateY(-2px);
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════
+     ENVELOPE OVERLAY (fixed, fades out on open)
+════════════════════════════════════════ -->
+<div id="envOverlay">
+  <div class="envelope-stage">
+
+    <div class="envelope-wrapper" id="envelopeWrapper">
+      <div class="envelope-body-clip">
+        <img class="envelope-inside"  src="envelope_inside.png"       alt="">
+        <img class="envelope-outside" src="envelope_closed_back.png"  alt="">
+      </div>
+      <div class="flap-container">
+        <div class="flap" id="flap">
+          <img class="flap-front" src="flap_closed.png"       alt="">
+          <img class="flap-back"  src="evelope_open_flap.png" alt="">
+        </div>
+      </div>
+    </div>
+
+    <p class="names-label">Adil &amp; Sania</p>
+    <p class="tap-hint" id="tapHint">tap to open</p>
+
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     WELCOME SCREEN (fixed, fades in after envelope)
+════════════════════════════════════════ -->
+<div id="welcomeScreen">
+  <p class="welcome-eyebrow">You&rsquo;re invited to</p>
+  <h1 class="welcome-title">Sania &amp; Adil&rsquo;s<br>Wedding</h1>
+  <p class="welcome-tagline">We can&rsquo;t wait to celebrate with you!</p>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SCROLL HINT (fixed, appears after cross-fade)
+════════════════════════════════════════ -->
+<div id="scrollHint">
+  scroll
+  <span class="line"></span>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     CARD FRAME — fixed, always centred.
+     All cards live here; pin-sections below
+     are empty scroll-distance spacers.
+════════════════════════════════════════ -->
+<div id="card-frame">
+
+  <div class="card-entrance" id="ent0">
+    <div class="card-stage">
+      <div class="card-flipper" id="flip0">
+        <img class="card-face"      src="Nikkah_Front 2.png" alt="Nikkah Front">
+        <img class="card-face back" src="Nikkah_Back 2.png"  alt="Nikkah Back">
+      </div>
+    </div>
+  </div>
+
+  <div class="card-entrance" id="ent1">
+    <div class="card-stage">
+      <div class="card-flipper" id="flip1">
+        <img class="card-face"      src="Sangeet_Front.png" alt="Sangeet Front">
+        <img class="card-face back" src="Sangeet_Back.png"  alt="Sangeet Back">
+      </div>
+    </div>
+  </div>
+
+  <div class="card-entrance" id="ent2">
+    <div class="card-stage">
+      <div class="card-flipper" id="flip2">
+        <img class="card-face"      src="Mehndi_Front.png"        alt="Mehndi Front">
+        <img class="card-face back" src="Mehndi_Back_-_Sania.png" alt="Mehndi Back">
+      </div>
+    </div>
+  </div>
+
+  <div class="card-entrance" id="ent3">
+    <div class="card-stage">
+      <div class="card-flipper" id="flip3">
+        <img class="card-face"      src="Reception_Front.png" alt="Reception Front">
+        <img class="card-face back" src="Reception_Back.png"  alt="Reception Back">
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ════════════════════════════════════════
+     SCROLL SPACERS — one per visible card.
+     Heights drive sectionProgress() in JS.
+════════════════════════════════════════ -->
+<div class="pin-section" id="sec0" style="height: 220vh;"></div>
+<div class="pin-section" id="sec1" style="height: 220vh;"></div>
+<div class="pin-section" id="sec2" style="height: 220vh;"></div>
+<div class="pin-section" id="sec3" style="height: 220vh;"></div>
+
+
+<!-- ════════════════════════════════════════
+     ZOLA CTA
+════════════════════════════════════════ -->
+<div class="zola-section">
+  <a class="zola-btn" href="https://www.zola.com/wedding/adilandsania" target="_blank">
+    RSVP on Zola &nbsp;↗
+  </a>
+</div>
+
+
+<script>
+// ─── Always start from the top on load / refresh ───────────
+history.scrollRestoration = 'manual';
+window.scrollTo(0, 0);
+
+// ─── Helpers ───────────────────────────────────────────────
+function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+function eio(t) { return t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t; }
+function eout(t) { return 1 - (1-t)*(1-t)*(1-t); }
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function sectionProgress(el) {
+  // Progress across the full section height (0 = section top at viewport top,
+  // 1 = section bottom at viewport bottom).  This gives a smooth 0→1
+  // that tracks the entire 220vh spacer with no dead-zone gap.
+  const top = el.getBoundingClientRect().top;
+  const h   = el.offsetHeight;
+  if (h <= 0) return 0;
+  return clamp(-top / h, 0, 1);
+}
+
+function mapRange(v, inLo, inHi, outLo, outHi) {
+  const t = clamp((v - inLo) / (inHi - inLo), 0, 1);
+  return outLo + (outHi - outLo) * t;
+}
+
+
+// ════════════════════════════════════════
+// GUEST INVITE TIERS
+// Keep this file private — do not share keys.html publicly.
+//
+// To add a new tier:
+//   1. Pick any random 6-char alphanumeric code
+//   2. List the events that guest group should see
+//   3. Add a row to keys.html so you remember who has what link
+//
+// Events must match exactly: 'sangeet' | 'mehndi' | 'nikkah' | 'reception'
+// ════════════════════════════════════════
+const TIERS = {
+  // ── All 4 ──
+  'f2k9r7': ['nikkah', 'sangeet', 'mehndi', 'reception'],
+  // ── Without Reception ──
+  'p4m8n3': ['nikkah', 'sangeet', 'mehndi'],
+  // ── Without Mehndi ──
+  'w7x2q5': ['nikkah', 'sangeet', 'reception'],
+  // ── Without Mehndi or Reception ──
+  'h5j1t6': ['nikkah', 'sangeet'],
+  // ── Nikkah + Mehndi + Reception ──
+  'b9v3w4': ['nikkah', 'mehndi', 'reception'],
+  // ── Nikkah + Reception only ──
+  'y6z4r8': ['nikkah', 'reception'],
+  // ── Nikkah only ──
+  'c3n7k2': ['nikkah'],
+  // ── Reception only ──
+  'r5t2m8': ['reception'],
+};
+
+// Cards 0–3 map to these events in order (matches sec0–sec3 in HTML)
+const EVENT_ORDER = ['nikkah', 'sangeet', 'mehndi', 'reception'];
+
+// Read ?i= from the URL
+const urlKey = new URLSearchParams(window.location.search).get('i');
+
+// Resolve which events this guest sees.
+// Unknown / missing key → show all (safe fallback so forwarded links still work)
+const allowedEvents = TIERS[urlKey] ?? ['sangeet', 'mehndi', 'nikkah', 'reception'];
+
+// Build an ordered list of card indices that are visible for this guest
+const visibleIdx = EVENT_ORDER
+  .map((evt, i) => allowedEvents.includes(evt) ? i : -1)
+  .filter(i => i >= 0);
+
+const firstIdx = visibleIdx[0]; // first card this guest sees (may not be 0)
+
+
+// ─── DOM refs ──────────────────────────────────────────────
+const envOverlay      = document.getElementById('envOverlay');
+const envelopeWrapper = document.getElementById('envelopeWrapper');
+const flap            = document.getElementById('flap');
+const tapHint         = document.getElementById('tapHint');
+const scrollHint      = document.getElementById('scrollHint');
+
+const N = 4;
+const cardSections = Array.from({length: N}, (_, i) => document.getElementById('sec'+i));
+const entrances    = Array.from({length: N}, (_, i) => document.getElementById('ent'+i));
+const flippers     = Array.from({length: N}, (_, i) => document.getElementById('flip'+i));
+
+
+// ─── Hide irrelevant cards immediately (before first paint) ──
+for (let i = 0; i < N; i++) {
+  if (!visibleIdx.includes(i)) {
+    cardSections[i].style.display = 'none';
+  }
+}
+
+
+// ─── Initial state ─────────────────────────────────────────
+// Scroll locked until envelope is dismissed
+document.body.style.overflow = 'hidden';
+
+// All cards start hidden — revealed purely by scroll
+for (const i of visibleIdx) {
+  entrances[i].style.opacity   = '0';
+  entrances[i].style.transform = `translateY(52px)`;
+}
+
+const welcomeScreen = document.getElementById('welcomeScreen');
+
+
+// ─── Tap to open ───────────────────────────────────────────
+let isOpen = false;
+
+envelopeWrapper.addEventListener('click', async () => {
+  if (isOpen) return;
+  isOpen = true;
+  envelopeWrapper.classList.add('opened');
+
+  // 1. Fade out "tap to open"
+  tapHint.style.opacity = '0';
+
+  // 2. Open flap
+  flap.style.transition = 'transform 0.95s cubic-bezier(0.4, 0, 0.2, 1)';
+  flap.style.transform  = 'rotateX(180deg)';
+
+  await delay(800);
+
+  // 3. Cross-fade: envelope out ↔ welcome screen in
+  welcomeScreen.style.transition = 'opacity 0.75s ease';
+  welcomeScreen.style.opacity    = '1';
+
+  envOverlay.style.transition = 'opacity 0.75s ease';
+  envOverlay.style.opacity    = '0';
+
+  await delay(800);
+
+  envOverlay.style.display = 'none';
+
+  document.body.style.overflow = '';
+  scrollHint.style.opacity = '1';
+});
+
+
+// ─── Scroll-driven card animations ─────────────────────────
+function update() {
+  ticking = false;
+
+  const sy = window.scrollY;
+
+  // Welcome screen fades out over first 220px of scroll
+  welcomeScreen.style.opacity = String(clamp(1 - sy / 220, 0, 1));
+
+  // Scroll hint fades out quickly
+  scrollHint.style.opacity = String(clamp(1 - sy / 120, 0, 1));
+
+  for (let j = 0; j < visibleIdx.length; j++) {
+    const i      = visibleIdx[j];
+    const cp     = sectionProgress(cardSections[i]);
+    const isLast = (j === visibleIdx.length - 1);
+
+    // All cards: float up + fade in, flip, then fade out (except last)
+    const enterP = eout(mapRange(cp, 0, 0.22, 0, 1));
+    const exitP  = isLast ? 0 : eout(mapRange(cp, 0.80, 1.0, 0, 1));
+    const vis    = clamp(enterP - exitP, 0, 1);
+
+    entrances[i].style.opacity   = String(vis);
+    entrances[i].style.transform = `translateY(${52 * (1 - enterP)}px)`;
+
+    const flipP = eio(mapRange(cp, 0.30, 0.70, 0, 1));
+    flippers[i].style.transform  = `rotateY(${flipP * 180}deg)`;
+  }
+}
+
+let ticking = false;
+window.addEventListener('scroll', () => {
+  if (!ticking) {
+    requestAnimationFrame(update);
+    ticking = true;
+  }
+}, { passive: true });
+
+update();
+</script>
+
+</body>
+</html>
