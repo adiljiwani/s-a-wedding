@@ -275,8 +275,11 @@
   .zola-section {
     /* padding-top pushes the button below the viewport while the last
        card is still fading — it only appears once the card is fully gone */
-    padding: 100vh 32px 80px;
-    text-align: center;
+    padding-top: 100vh;
+    min-height: 200vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .zola-btn {
