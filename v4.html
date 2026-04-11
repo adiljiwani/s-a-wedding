@@ -398,6 +398,10 @@
 
 
 <script>
+// ─── Always start from the top on load / refresh ───────────
+history.scrollRestoration = 'manual';
+window.scrollTo(0, 0);
+
 // ─── Helpers ───────────────────────────────────────────────
 function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 function eio(t) { return t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t; }

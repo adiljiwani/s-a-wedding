@@ -2,6 +2,16 @@
 keys.html
 send-invites.gs
 
+# Old versions / local only
+index.html
+serve.sh
+v2.html
+v2 copy.html
+v3.html
+
+# Cowork internals
+.claude/
+
 # OS clutter
 .DS_Store
 Thumbs.db
