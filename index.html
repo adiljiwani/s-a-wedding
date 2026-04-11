@@ -7,10 +7,6 @@
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
-  html {
-    scroll-snap-type: y mandatory;
-  }
-
   html, body {
     background: #FAF5EF;
   }
@@ -173,24 +169,6 @@
 
   .pin-section {
     /* purely a scroll-distance spacer */
-    position: relative; /* needed so .snap-gate can be absolutely placed */
-  }
-
-  /* Placed at 75 % of each 130vh section (= 97.5vh from section top).
-     scroll-snap-stop: always means a fast iOS swipe MUST stop here. */
-  .snap-gate {
-    position: absolute;
-    top: 97.5vh;
-    height: 1px;
-    width: 100%;
-    scroll-snap-align: start;
-    scroll-snap-stop: always;
-    pointer-events: none;
-  }
-
-  /* Anchor at y = 0 so mandatory snap never auto-scrolls on open */
-  .snap-top {
-    scroll-snap-align: start;
   }
 
   /* Fixed frame that holds every card */
@@ -231,8 +209,6 @@
     width: 100%; height: auto;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
-    border-radius: 5px;
-    box-shadow: 0 12px 44px rgba(0,0,0,0.22);
   }
 
   .card-face.back {
@@ -294,10 +270,8 @@
      ZOLA CTA — minimal, just a button
   ════════════════════════════════════════ */
 
-  /* Empty scroll spacer — just provides the final snap point */
   .zola-section {
     height: 100vh;
-    scroll-snap-align: start;
   }
 
   /* Fixed overlay — cross-fades in as the last card exits */
@@ -425,19 +399,14 @@
 </div>
 
 
-<!-- snap anchor at y=0 — keeps mandatory snap from auto-scrolling on open -->
-<div class="snap-top"></div>
-
 <!-- ════════════════════════════════════════
      SCROLL SPACERS — one per visible card.
      Heights drive sectionProgress() in JS.
-     Each contains a .snap-gate at 75 % depth
-     so iOS can't fast-swipe past the back face.
 ════════════════════════════════════════ -->
-<div class="pin-section" id="sec0" style="height: 130vh;"><div class="snap-gate"></div></div>
-<div class="pin-section" id="sec1" style="height: 130vh;"><div class="snap-gate"></div></div>
-<div class="pin-section" id="sec2" style="height: 130vh;"><div class="snap-gate"></div></div>
-<div class="pin-section" id="sec3" style="height: 130vh;"><div class="snap-gate"></div></div>
+<div class="pin-section" id="sec0" style="height: 130vh;"></div>
+<div class="pin-section" id="sec1" style="height: 130vh;"></div>
+<div class="pin-section" id="sec2" style="height: 130vh;"></div>
+<div class="pin-section" id="sec3" style="height: 130vh;"></div>
 
 
 <!-- ════════════════════════════════════════
