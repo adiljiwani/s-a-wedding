@@ -1,0 +1,7 @@
+# Private files — never commit these
+keys.html
+send-invites.gs
+
+# OS clutter
+.DS_Store
+Thumbs.db
