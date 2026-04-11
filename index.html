@@ -273,11 +273,10 @@
   ════════════════════════════════════════ */
 
   .zola-section {
-    min-height: 60vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 60px 32px;
+    /* padding-top pushes the button below the viewport while the last
+       card is still fading — it only appears once the card is fully gone */
+    padding: 100vh 32px 80px;
+    text-align: center;
   }
 
   .zola-btn {
