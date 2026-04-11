@@ -322,7 +322,6 @@
       </div>
     </div>
 
-    <p class="names-label">Adil &amp; Sania</p>
     <p class="tap-hint" id="tapHint">tap to open</p>
 
   </div>
@@ -562,8 +561,8 @@ function update() {
 
   const sy = window.scrollY;
 
-  // Welcome screen fades out over first 220px of scroll
-  welcomeScreen.style.opacity = String(clamp(1 - sy / 220, 0, 1));
+  // Welcome screen snaps away over first 60px of scroll
+  welcomeScreen.style.opacity = String(clamp(1 - sy / 60, 0, 1));
 
   // Scroll hint fades out quickly
   scrollHint.style.opacity = String(clamp(1 - sy / 120, 0, 1));
@@ -573,8 +572,9 @@ function update() {
     const cp     = sectionProgress(cardSections[i]);
     const isLast = (j === visibleIdx.length - 1);
 
-    // All cards: float up + fade in, flip, then fade out (except last)
-    const enterP = eout(mapRange(cp, 0, 0.22, 0, 1));
+    // Cards only start entering after welcome is fully gone (sy > 60)
+    const cardDelay = Math.max(0, sy - 60);
+    const enterP = eout(mapRange(cp, 0, 0.22, 0, 1)) * clamp(cardDelay / 40, 0, 1);
     const exitP  = isLast ? 0 : eout(mapRange(cp, 0.80, 1.0, 0, 1));
     const vis    = clamp(enterP - exitP, 0, 1);
 
