@@ -533,6 +533,7 @@ const flippers     = Array.from({length: N}, (_, i) => document.getElementById('
 for (let i = 0; i < N; i++) {
   if (!visibleIdx.includes(i)) {
     cardSections[i].style.display = 'none';
+    entrances[i].style.display    = 'none'; // hide the fixed card too
   }
 }
 
