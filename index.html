@@ -579,7 +579,7 @@ function update() {
     const vis    = clamp(enterP - exitP, 0, 1);
 
     entrances[i].style.opacity   = String(vis);
-    entrances[i].style.transform = `translateY(${52 * (1 - enterP)}px)`;
+    entrances[i].style.transform = `translateY(${52 * (1 - enterP) - 72 * exitP}px)`;
 
     const flipP = eio(mapRange(cp, 0.30, 0.70, 0, 1));
     flippers[i].style.transform  = `rotateY(${flipP * 180}deg)`;
