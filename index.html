@@ -164,12 +164,7 @@
 
   /* ════════════════════════════════════════
      CARD FRAME — fixed overlay, always centred.
-     Pin-sections are empty scroll spacers only.
   ════════════════════════════════════════ */
-
-  .pin-section {
-    /* purely a scroll-distance spacer */
-  }
 
   /* Fixed frame that holds every card */
   #card-frame {
@@ -267,12 +262,8 @@
 
 
   /* ════════════════════════════════════════
-     ZOLA CTA — minimal, just a button
+     ZOLA CTA — fixed overlay, fades in at end
   ════════════════════════════════════════ */
-
-  .zola-section {
-    height: 100vh;
-  }
 
   /* Fixed overlay — cross-fades in as the last card exits */
   #zolaScreen {
@@ -348,7 +339,7 @@
      SCROLL HINT (fixed, appears after cross-fade)
 ════════════════════════════════════════ -->
 <div id="scrollHint">
-  scroll
+  swipe
   <span class="line"></span>
 </div>
 
@@ -400,18 +391,7 @@
 
 
 <!-- ════════════════════════════════════════
-     SCROLL SPACERS — one per visible card.
-     Heights drive sectionProgress() in JS.
-════════════════════════════════════════ -->
-<div class="pin-section" id="sec0" style="height: 130vh;"></div>
-<div class="pin-section" id="sec1" style="height: 130vh;"></div>
-<div class="pin-section" id="sec2" style="height: 130vh;"></div>
-<div class="pin-section" id="sec3" style="height: 130vh;"></div>
-
-
-<!-- ════════════════════════════════════════
-     ZOLA CTA — fixed overlay, cross-fades in
-     as the last card exits
+     ZOLA CTA — fixed overlay, fades in after last card
 ════════════════════════════════════════ -->
 <div id="zolaScreen">
   <a class="zola-btn" href="https://www.zola.com/wedding/adilandsania" target="_blank">
@@ -419,47 +399,14 @@
   </a>
 </div>
 
-<!-- empty spacer just to provide the final CSS snap point -->
-<div class="zola-section"></div>
-
 
 <script>
-// ─── Always start from the top on load / refresh ───────────
-history.scrollRestoration = 'manual';
-window.scrollTo(0, 0);
-
 // ─── Helpers ───────────────────────────────────────────────
-function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
-function eio(t) { return t < 0.5 ? 2*t*t : -1 + (4 - 2*t)*t; }
-function eout(t) { return 1 - (1-t)*(1-t)*(1-t); }
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-function sectionProgress(el) {
-  // Progress across the full section height (0 = section top at viewport top,
-  // 1 = section bottom at viewport bottom).  This gives a smooth 0→1
-  // that tracks the entire 220vh spacer with no dead-zone gap.
-  const top = el.getBoundingClientRect().top;
-  const h   = el.offsetHeight;
-  if (h <= 0) return 0;
-  return clamp(-top / h, 0, 1);
-}
-
-function mapRange(v, inLo, inHi, outLo, outHi) {
-  const t = clamp((v - inLo) / (inHi - inLo), 0, 1);
-  return outLo + (outHi - outLo) * t;
-}
 
 
 // ════════════════════════════════════════
 // GUEST INVITE TIERS
-// Keep this file private — do not share keys.html publicly.
-//
-// To add a new tier:
-//   1. Pick any random 6-char alphanumeric code
-//   2. List the events that guest group should see
-//   3. Add a row to keys.html so you remember who has what link
-//
-// Events must match exactly: 'sangeet' | 'mehndi' | 'nikkah' | 'reception'
 // ════════════════════════════════════════
 const TIERS = {
   // ── All 4 ──
@@ -480,22 +427,12 @@ const TIERS = {
   'r5t2m8': ['reception'],
 };
 
-// Cards 0–3 map to these events in order (matches sec0–sec3 in HTML)
-const EVENT_ORDER = ['mehndi', 'sangeet', 'nikkah', 'reception'];
-
-// Read ?i= from the URL
-const urlKey = new URLSearchParams(window.location.search).get('i');
-
-// Resolve which events this guest sees.
-// Unknown / missing key → show all (safe fallback so forwarded links still work)
+const EVENT_ORDER   = ['mehndi', 'sangeet', 'nikkah', 'reception'];
+const urlKey        = new URLSearchParams(window.location.search).get('i');
 const allowedEvents = TIERS[urlKey] ?? ['sangeet', 'mehndi', 'nikkah', 'reception'];
-
-// Build an ordered list of card indices that are visible for this guest
-const visibleIdx = EVENT_ORDER
+const visibleIdx    = EVENT_ORDER
   .map((evt, i) => allowedEvents.includes(evt) ? i : -1)
   .filter(i => i >= 0);
-
-const firstIdx = visibleIdx[0]; // first card this guest sees (may not be 0)
 
 
 // ─── DOM refs ──────────────────────────────────────────────
@@ -504,37 +441,120 @@ const envelopeWrapper = document.getElementById('envelopeWrapper');
 const flap            = document.getElementById('flap');
 const tapHint         = document.getElementById('tapHint');
 const scrollHint      = document.getElementById('scrollHint');
+const welcomeScreen   = document.getElementById('welcomeScreen');
+const zolaScreen      = document.getElementById('zolaScreen');
 
-const N = 4;
-const cardSections = Array.from({length: N}, (_, i) => document.getElementById('sec'+i));
-const entrances    = Array.from({length: N}, (_, i) => document.getElementById('ent'+i));
-const flippers     = Array.from({length: N}, (_, i) => document.getElementById('flip'+i));
-const zolaScreen   = document.getElementById('zolaScreen');
+const N        = 4;
+const entrances = Array.from({length: N}, (_, i) => document.getElementById('ent'+i));
+const flippers  = Array.from({length: N}, (_, i) => document.getElementById('flip'+i));
 
 
-// ─── Hide irrelevant cards immediately (before first paint) ──
+// ─── Hide cards for uninvited events (before first paint) ───
 for (let i = 0; i < N; i++) {
-  if (!visibleIdx.includes(i)) {
-    cardSections[i].style.display = 'none';
-    entrances[i].style.display    = 'none'; // hide the fixed card too
+  if (!visibleIdx.includes(i)) entrances[i].style.display = 'none';
+}
+
+// ─── Set initial card positions (no transitions yet) ────────
+for (const i of visibleIdx) {
+  entrances[i].style.opacity   = '0';
+  entrances[i].style.transform = 'translateY(52px)';
+  flippers[i].style.transform  = 'rotateY(0deg)';
+}
+
+// ─── Body stays overflow:hidden throughout ──────────────────
+document.body.style.overflow = 'hidden';
+
+
+// ════════════════════════════════════════
+// STEP STATE MACHINE
+//
+// Each swipe advances one step. Steps per card (j = 0-indexed position
+// within visibleIdx):
+//   2j+1 → card enters   (front face, slides up)
+//   2j+2 → card flips    (back face, rotates)
+//   2j+3 → card exits    (slides up out) + next card enters simultaneously
+//
+// maxStep = 2*numCards+1 → last card exits, RSVP appears
+// ════════════════════════════════════════
+const numCards = visibleIdx.length;
+const maxStep  = 2 * numCards + 1;
+let   step     = 0;
+let   busy     = false;
+const LOCK_MS  = 820; // slightly longer than longest transition (flip = 800ms)
+
+function renderStep(s) {
+  // Welcome screen
+  welcomeScreen.style.opacity      = s === 0 ? '1' : '0';
+  welcomeScreen.style.pointerEvents = s === 0 ? 'auto' : 'none';
+
+  // Hint
+  scrollHint.style.opacity = s === 0 ? '1' : '0';
+
+  // RSVP
+  zolaScreen.style.opacity       = s >= maxStep ? '1' : '0';
+  zolaScreen.style.pointerEvents = s >= maxStep ? 'auto' : 'none';
+
+  // Cards
+  for (let j = 0; j < numCards; j++) {
+    const i         = visibleIdx[j];
+    const enterStep = 2 * j + 1;
+    const flipStep  = 2 * j + 2;
+    const exitStep  = 2 * j + 3;
+
+    if (s < enterStep) {
+      // Waiting below
+      entrances[i].style.opacity   = '0';
+      entrances[i].style.transform = 'translateY(52px)';
+      flippers[i].style.transform  = 'rotateY(0deg)';
+    } else if (s < exitStep) {
+      // Visible
+      entrances[i].style.opacity   = '1';
+      entrances[i].style.transform = 'translateY(0px)';
+      flippers[i].style.transform  = s >= flipStep ? 'rotateY(180deg)' : 'rotateY(0deg)';
+    } else {
+      // Exited above
+      entrances[i].style.opacity   = '0';
+      entrances[i].style.transform = 'translateY(-72px)';
+      flippers[i].style.transform  = 'rotateY(180deg)';
+    }
   }
 }
 
-
-// ─── Initial state ─────────────────────────────────────────
-// Scroll locked until envelope is dismissed
-document.body.style.overflow = 'hidden';
-
-// All cards start hidden — revealed purely by scroll
-for (const i of visibleIdx) {
-  entrances[i].style.opacity   = '0';
-  entrances[i].style.transform = `translateY(52px)`;
+function advance(dir) {
+  if (busy) return;
+  const next = step + dir;
+  if (next < 0 || next > maxStep) return;
+  busy = true;
+  step = next;
+  renderStep(step);
+  setTimeout(() => { busy = false; }, LOCK_MS);
 }
 
-const welcomeScreen = document.getElementById('welcomeScreen');
+
+// ─── Gesture: wheel (desktop / trackpad) ───────────────────
+let wheelBusy = false;
+window.addEventListener('wheel', (e) => {
+  if (!isOpen || wheelBusy) return;
+  wheelBusy = true;
+  advance(e.deltaY > 0 ? 1 : -1);
+  setTimeout(() => { wheelBusy = false; }, LOCK_MS);
+}, { passive: true });
+
+// ─── Gesture: touch swipe (mobile) ─────────────────────────
+let touchY0 = 0;
+window.addEventListener('touchstart', (e) => {
+  touchY0 = e.touches[0].clientY;
+}, { passive: true });
+
+window.addEventListener('touchend', (e) => {
+  if (!isOpen) return;
+  const dy = touchY0 - e.changedTouches[0].clientY;
+  if (Math.abs(dy) < 40) return; // ignore tiny taps
+  advance(dy > 0 ? 1 : -1);
+}, { passive: true });
 
 
-// ─── Tap to open ───────────────────────────────────────────
+// ─── Envelope open ─────────────────────────────────────────
 let isOpen = false;
 
 envelopeWrapper.addEventListener('click', async () => {
@@ -542,84 +562,29 @@ envelopeWrapper.addEventListener('click', async () => {
   isOpen = true;
   envelopeWrapper.classList.add('opened');
 
-  // 1. Fade out "tap to open"
   tapHint.style.opacity = '0';
 
-  // 2. Open flap
   flap.style.transition = 'transform 0.95s cubic-bezier(0.4, 0, 0.2, 1)';
   flap.style.transform  = 'rotateX(180deg)';
 
   await delay(800);
 
-  // 3. Cross-fade: envelope out ↔ welcome screen in
-  welcomeScreen.style.transition = 'opacity 0.75s ease';
-  welcomeScreen.style.opacity    = '1';
+  // Enable transitions now (after initial render, so nothing flashes)
+  welcomeScreen.style.transition = 'opacity 0.6s ease';
+  zolaScreen.style.transition    = 'opacity 0.6s ease';
+  for (const i of visibleIdx) {
+    entrances[i].style.transition = 'opacity 0.55s ease, transform 0.55s ease';
+    flippers[i].style.transition  = 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
+  }
 
+  welcomeScreen.style.opacity = '1';
   envOverlay.style.transition = 'opacity 0.75s ease';
   envOverlay.style.opacity    = '0';
 
   await delay(800);
-
   envOverlay.style.display = 'none';
-
-  document.body.style.overflow = '';
   scrollHint.style.opacity = '1';
 });
-
-
-// ─── Scroll-driven card animations ─────────────────────────
-function update() {
-  ticking = false;
-
-  const sy = window.scrollY;
-
-  // Welcome screen snaps away over first 60px of scroll
-  welcomeScreen.style.opacity = String(clamp(1 - sy / 60, 0, 1));
-
-  // Scroll hint fades out quickly
-  scrollHint.style.opacity = String(clamp(1 - sy / 120, 0, 1));
-
-  for (let j = 0; j < visibleIdx.length; j++) {
-    const i      = visibleIdx[j];
-    const cp     = sectionProgress(cardSections[i]);
-    // Cards only start entering after welcome is fully gone (sy > 60)
-    const cardDelay = Math.max(0, sy - 60);
-    const enterP = eout(mapRange(cp, 0, 0.22, 0, 1)) * clamp(cardDelay / 40, 0, 1);
-    const exitP  = eout(mapRange(cp, 0.80, 1.0, 0, 1));
-    const vis    = clamp(enterP - exitP, 0, 1);
-
-    entrances[i].style.opacity   = String(vis);
-    entrances[i].style.transform = `translateY(${52 * (1 - enterP) - 72 * exitP}px)`;
-
-    const flipP = eio(mapRange(cp, 0.30, 0.70, 0, 1));
-    flippers[i].style.transform  = `rotateY(${flipP * 180}deg)`;
-  }
-
-  // Zola CTA cross-fades in as the last card exits
-  const lastI  = visibleIdx[visibleIdx.length - 1];
-  const lastCp = sectionProgress(cardSections[lastI]);
-  const zolaOp = eout(mapRange(lastCp, 0.80, 1.0, 0, 1));
-  zolaScreen.style.opacity       = String(zolaOp);
-  zolaScreen.style.pointerEvents = zolaOp > 0.5 ? 'auto' : 'none';
-}
-
-let ticking = false;
-window.addEventListener('scroll', () => {
-  if (!ticking) {
-    requestAnimationFrame(update);
-    ticking = true;
-  }
-}, { passive: true });
-
-
-// ─── Checkpoint gate ──────────────────────────────────────────
-// Handled entirely by CSS scroll-snap: each .pin-section contains
-// a .snap-gate div at 97.5vh (75 % of 130vh) with
-//   scroll-snap-align: start; scroll-snap-stop: always
-// The html element has scroll-snap-type: y mandatory.
-// This is the only approach that reliably gates fast iOS swipes.
-
-update();
 </script>
 
 </body>
