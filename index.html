@@ -557,7 +557,7 @@ window.addEventListener('touchend', (e) => {
 // ─── Envelope open ─────────────────────────────────────────
 let isOpen = false;
 
-envelopeWrapper.addEventListener('click', async () => {
+envOverlay.addEventListener('click', async () => {
   if (isOpen) return;
   isOpen = true;
   envelopeWrapper.classList.add('opened');
