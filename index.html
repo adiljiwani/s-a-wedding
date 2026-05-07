@@ -429,7 +429,7 @@ const TIERS = {
 
 const EVENT_ORDER   = ['mehndi', 'sangeet', 'nikkah', 'reception'];
 const urlKey        = new URLSearchParams(window.location.search).get('i');
-const allowedEvents = TIERS[urlKey] ?? ['sangeet', 'mehndi', 'nikkah', 'reception'];
+const allowedEvents = TIERS[urlKey] ?? []; // no valid key → no cards shown
 const visibleIdx    = EVENT_ORDER
   .map((evt, i) => allowedEvents.includes(evt) ? i : -1)
   .filter(i => i >= 0);
