@@ -478,9 +478,10 @@ document.body.style.overflow = 'hidden';
 // ════════════════════════════════════════
 const numCards = visibleIdx.length;
 const maxStep  = 2 * numCards + 1;
-let   step     = 0;
-let   busy     = false;
-const LOCK_MS  = 820; // slightly longer than longest transition (flip = 800ms)
+let   step          = 0;
+let   busy          = false;
+let   autoFlipTimer = null;
+const LOCK_MS       = 820; // slightly longer than longest transition (flip = 800ms)
 
 function renderStep(s) {
   // Welcome screen
@@ -521,6 +522,7 @@ function renderStep(s) {
 }
 
 function advance(dir) {
+  clearTimeout(autoFlipTimer); // cancel any pending auto-flip on manual gesture
   if (busy) return;
   const next = step + dir;
   if (next < 0 || next > maxStep) return;
@@ -528,16 +530,27 @@ function advance(dir) {
   step = next;
   renderStep(step);
   setTimeout(() => { busy = false; }, LOCK_MS);
+
+  // After entering a card (odd steps going forward), auto-flip to the back
+  if (dir > 0 && next % 2 === 1 && next < maxStep) {
+    autoFlipTimer = setTimeout(() => advance(1), LOCK_MS + 300);
+  }
 }
 
 
 // ─── Gesture: wheel (desktop / trackpad) ───────────────────
-let wheelBusy = false;
+// Debounce approach: fire on the FIRST event of each gesture,
+// then stay locked until wheel events stop arriving (400ms silence).
+// This handles trackpad momentum which can send events for 1-2s.
+let wheelBusy    = false;
+let wheelEndTimer = null;
 window.addEventListener('wheel', (e) => {
-  if (!isOpen || wheelBusy) return;
+  if (!isOpen) return;
+  clearTimeout(wheelEndTimer);
+  wheelEndTimer = setTimeout(() => { wheelBusy = false; }, 400);
+  if (wheelBusy) return;
   wheelBusy = true;
   advance(e.deltaY > 0 ? 1 : -1);
-  setTimeout(() => { wheelBusy = false; }, LOCK_MS);
 }, { passive: true });
 
 // ─── Gesture: touch swipe (mobile) ─────────────────────────
