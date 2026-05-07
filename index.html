@@ -487,8 +487,8 @@ function renderStep(s) {
   welcomeScreen.style.opacity      = s === 0 ? '1' : '0';
   welcomeScreen.style.pointerEvents = s === 0 ? 'auto' : 'none';
 
-  // Hint
-  scrollHint.style.opacity = s === 0 ? '1' : '0';
+  // Hint — visible until RSVP appears
+  scrollHint.style.opacity = s >= maxStep ? '0' : '1';
 
   // RSVP
   zolaScreen.style.opacity       = s >= maxStep ? '1' : '0';
