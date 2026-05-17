@@ -531,8 +531,8 @@ function renderStep(s) {
 }
 
 function advance(dir) {
-  clearTimeout(autoFlipTimer); // cancel any pending auto-flip on manual gesture
-  if (busy) return;
+  if (busy) return; // reject early — don't cancel any pending auto-flip
+  clearTimeout(autoFlipTimer); // only cancel auto-flip when we're actually advancing
   const next = step + dir;
   if (next < 0 || next > maxStep) return;
   busy = true;
