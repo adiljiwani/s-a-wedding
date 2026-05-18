@@ -567,7 +567,10 @@ window.addEventListener('wheel', (e) => {
   if (!isOpen) return;
   clearTimeout(wheelEndTimer);
   wheelEndTimer = setTimeout(() => { wheelBusy = false; }, 400);
-  if (wheelBusy) return;
+  if (wheelBusy) {
+    if (e.deltaY > 0) queued = true; // debounced scroll still registers forward intent
+    return;
+  }
   wheelBusy = true;
   advance(e.deltaY > 0 ? 1 : -1);
 }, { passive: true });
