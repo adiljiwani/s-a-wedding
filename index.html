@@ -561,14 +561,17 @@ function advance(dir) {
 // Debounce approach: fire on the FIRST event of each gesture,
 // then stay locked until wheel events stop arriving (400ms silence).
 // This handles trackpad momentum which can send events for 1-2s.
-let wheelBusy    = false;
-let wheelEndTimer = null;
+let wheelBusy     = false;
+let wheelEndTimer  = null;
+let wheelQueued    = false; // ensure momentum only queues once per gesture
 window.addEventListener('wheel', (e) => {
   if (!isOpen) return;
   clearTimeout(wheelEndTimer);
-  wheelEndTimer = setTimeout(() => { wheelBusy = false; }, 400);
+  wheelEndTimer = setTimeout(() => { wheelBusy = false; wheelQueued = false; }, 400);
   if (wheelBusy) {
-    if (e.deltaY > 0) queued = true; // debounced scroll still registers forward intent
+    // Only register forward intent once per gesture — continuous momentum must not
+    // re-queue after the first queue, which would race through multiple steps.
+    if (e.deltaY > 0 && !wheelQueued) { queued = true; wheelQueued = true; }
     return;
   }
   wheelBusy = true;
