@@ -558,24 +558,33 @@ function advance(dir) {
 
 
 // ─── Gesture: wheel (desktop / trackpad) ───────────────────
-// Debounce approach: fire on the FIRST event of each gesture,
-// then stay locked until wheel events stop arriving (400ms silence).
-// This handles trackpad momentum which can send events for 1-2s.
+// Forward scrolls are debounced — trackpad momentum fires for 1-2s and we only
+// want the first event of each gesture plus one queued follow-through.
+// Backward scrolls bypass debounce entirely: they're deliberate (no long
+// momentum tail), and the animation busy-lock (820ms) is sufficient rate-limiting.
 let wheelBusy     = false;
 let wheelEndTimer  = null;
 let wheelQueued    = false; // ensure momentum only queues once per gesture
 window.addEventListener('wheel', (e) => {
   if (!isOpen) return;
+
+  // Backward: always pass through — let advance()'s busy guard throttle it.
+  if (e.deltaY < 0) {
+    advance(-1);
+    return;
+  }
+
+  // Forward: debounce momentum.
   clearTimeout(wheelEndTimer);
   wheelEndTimer = setTimeout(() => { wheelBusy = false; wheelQueued = false; }, 400);
   if (wheelBusy) {
     // Only register forward intent once per gesture — continuous momentum must not
     // re-queue after the first queue, which would race through multiple steps.
-    if (e.deltaY > 0 && !wheelQueued) { queued = true; wheelQueued = true; }
+    if (!wheelQueued) { queued = true; wheelQueued = true; }
     return;
   }
   wheelBusy = true;
-  advance(e.deltaY > 0 ? 1 : -1);
+  advance(1);
 }, { passive: true });
 
 // ─── Gesture: touch swipe (mobile) ─────────────────────────
