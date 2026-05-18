@@ -489,6 +489,7 @@ const numCards = visibleIdx.length;
 const maxStep  = 2 * numCards + 1;
 let   step          = 0;
 let   busy          = false;
+let   queued        = false; // a forward advance was attempted while busy
 let   autoFlipTimer = null;
 const LOCK_MS       = 820; // slightly longer than longest transition (flip = 800ms)
 
@@ -531,14 +532,23 @@ function renderStep(s) {
 }
 
 function advance(dir) {
-  if (busy) return; // reject early — don't cancel any pending auto-flip
-  clearTimeout(autoFlipTimer); // only cancel auto-flip when we're actually advancing
+  if (busy) {
+    // Queue a forward advance so an impatient swipe still produces progress
+    if (dir > 0) queued = true;
+    return;
+  }
+  queued = false;
+  clearTimeout(autoFlipTimer);
   const next = step + dir;
   if (next < 0 || next > maxStep) return;
   busy = true;
   step = next;
   renderStep(step);
-  setTimeout(() => { busy = false; }, LOCK_MS);
+  setTimeout(() => {
+    busy = false;
+    // If the user swiped while we were busy, honour it now
+    if (queued) { queued = false; advance(1); }
+  }, LOCK_MS);
 
   // After entering a card (odd steps going forward), auto-flip to the back
   if (dir > 0 && next % 2 === 1 && next < maxStep) {
