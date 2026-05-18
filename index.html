@@ -186,12 +186,17 @@
     justify-content: center;
     pointer-events: none;
     z-index: 10;
+    /* Shift the vertical centre upward so cards don't crowd the scroll hint */
+    padding-bottom: 64px;
   }
 
   /* Each card is stacked in the centre */
   .card-entrance {
     position: absolute;
     width: min(420px, 83vw);
+    /* Never let a tall card reach the scroll hint on short viewports */
+    max-height: calc(100svh - 80px);
+    overflow: hidden;
     will-change: transform, opacity;
     pointer-events: auto;
   }
